@@ -39,13 +39,15 @@ func (redis Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 		records, truncated, err = redis.MX(ctx, zone, state, nil)
 	case dns.TypeSRV:
 		records, truncated, err = redis.SRV(ctx, zone, state, nil)
+	case dns.TypePTR:
+		records, err = redis.PTR(ctx, zone, state)
 	case dns.TypeSOA:
 		records, err = redis.SOA(ctx, zone, state)
 	case dns.TypeCAA:
 		records, err = redis.CAA(ctx, zone, state)
 
 	default:
-		return redis.errorReply(ctx, state.QName(), dns.RcodeNotImplemented, state, nil)
+		return redis.errorANSWER(ctx, state.QName(), dns.RcodeNotImplemented, state, nil)
 	}
 
 	if err != nil {
@@ -55,11 +57,11 @@ func (redis Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 			return plugin.NextOrFailure(redis.Name(), redis.Next, ctx, w, r)
 		}
 		// Make err nil when returning here, so we don't log spam for NXDOMAIN.
-		return redis.errorReply(ctx, state.QName(), dns.RcodeServerFailure, state, nil)
+		return redis.errorANSWER(ctx, state.QName(), dns.RcodeServerFailure, state, nil)
 	}
 
 	if len(records) == 0 {
-		return redis.errorReply(ctx, state.QName(), dns.RcodeSuccess, state, nil)
+		return redis.errorANSWER(ctx, state.QName(), dns.RcodeSuccess, state, nil)
 	}
 
 	m := new(dns.Msg)
@@ -77,7 +79,7 @@ func (redis Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 // Name implements the Handler interface.
 func (Redis) Name() string { return "redis" }
 
-func (r Redis) errorReply(ctx context.Context, zone string, rcode int, state request.Request, err error) (int, error) {
+func (r Redis) errorANSWER(ctx context.Context, zone string, rcode int, state request.Request, err error) (int, error) {
 
 	m := new(dns.Msg)
 	m.SetRcode(state.Req, rcode)

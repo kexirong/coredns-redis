@@ -50,7 +50,7 @@ func (i ItemHost) NewCNAME(name string) *dns.CNAME {
 }
 
 func (i ItemHost) NewNS(name string) *dns.NS {
-	return &dns.NS{Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: i.TTL}, Ns: dns.Fqdn(i.Host)}
+	return &dns.NS{Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: i.TTL}, Ns: dns.Fqdn(i.Host)}
 }
 
 func (i ItemHost) NewPTR(name string) *dns.PTR {
