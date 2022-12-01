@@ -25,7 +25,7 @@ type Redis struct {
 	Upstream *upstream.Upstream
 }
 
-func (r Redis) get(ctx context.Context, key, field string) (val string, err error) {
+func (r *Redis) get(ctx context.Context, key, field string) (val string, err error) {
 	val, err = r.Client.HGet(ctx, key, field).Result()
 
 	if err == redisV8.Nil {
@@ -38,7 +38,7 @@ func (r Redis) get(ctx context.Context, key, field string) (val string, err erro
 	return
 }
 
-func (r Redis) cname(ctx context.Context, zone string, state request.Request) (rCNAME RecordCNANE, err error) {
+func (r *Redis) cname(ctx context.Context, zone string, state request.Request) (rCNAME RecordCNANE, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
 	val, err := r.get(ctx, key, state.Type())
 	if err != nil {
@@ -60,6 +60,6 @@ func (r *Redis) Lookup(ctx context.Context, state request.Request, name string) 
 var errKeyNotFound = errors.New("key not found")
 
 // MinTTL returns the minimal TTL.
-func (Redis) MinTTL(state request.Request) uint32 {
+func (*Redis) MinTTL(state request.Request) uint32 {
 	return 30
 }
