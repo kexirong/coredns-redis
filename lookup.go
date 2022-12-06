@@ -6,13 +6,16 @@ import (
 	"time"
 
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
+	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
 )
 
 func (r Redis) A(ctx context.Context, zone string, state request.Request, previousRecords []dns.RR) (records []dns.RR, truncated bool, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
-
+doSearch:
+	clog.Error(key, " A start: ", time.Now())
+	defer clog.Error(key, " A end: ", time.Now())
 	val, err := r.get(ctx, key, state.Type())
 	switch err {
 	case nil:
@@ -30,6 +33,11 @@ func (r Redis) A(ctx context.Context, zone string, state request.Request, previo
 		rCNAME, err := r.cname(ctx, zone, stateNew)
 
 		if err != nil {
+			if err == errKeyNotFound && !IsAnyKey(key) {
+				key = AnyKey(key)
+				goto doSearch
+			}
+
 			return nil, false, err
 		}
 
@@ -79,11 +87,13 @@ func (r Redis) A(ctx context.Context, zone string, state request.Request, previo
 			return nil, false, err
 		}
 	}
+
 	return records, truncated, nil
 }
 
 func (r Redis) AAAA(ctx context.Context, zone string, state request.Request, previousRecords []dns.RR) (records []dns.RR, truncated bool, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
+doSearch:
 	val, err := r.get(ctx, key, state.Type())
 	switch err {
 	case nil:
@@ -101,6 +111,10 @@ func (r Redis) AAAA(ctx context.Context, zone string, state request.Request, pre
 		rCNAME, err := r.cname(ctx, zone, stateNew)
 
 		if err != nil {
+			if err == errKeyNotFound && !IsAnyKey(key) {
+				key = AnyKey(key)
+				goto doSearch
+			}
 			return nil, false, err
 		}
 
@@ -153,11 +167,24 @@ func (r Redis) AAAA(ctx context.Context, zone string, state request.Request, pre
 }
 
 func (r Redis) CNAME(ctx context.Context, zone string, state request.Request) (records []dns.RR, err error) {
-	rCNAME, err := r.cname(ctx, zone, state)
+	var rCNAME RecordCNANE
 
+	key := Key(state.Name(), r.KeyPrefix)
+doSearch:
+	val, err := r.get(ctx, key, state.Type())
+	if err != nil {
+		if err == errKeyNotFound && !IsAnyKey(key) {
+			key = AnyKey(key)
+			goto doSearch
+		}
+		return nil, err
+	}
+
+	err = json.Unmarshal([]byte(val), &rCNAME)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, item := range rCNAME {
 		records = append(records, item.NewCNAME(state.QName()))
 	}
@@ -166,6 +193,7 @@ func (r Redis) CNAME(ctx context.Context, zone string, state request.Request) (r
 
 func (r Redis) TXT(ctx context.Context, zone string, state request.Request, previousRecords []dns.RR) (records []dns.RR, truncated bool, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
+doSearch:
 	val, err := r.get(ctx, key, state.Type())
 	switch err {
 	case nil:
@@ -182,6 +210,10 @@ func (r Redis) TXT(ctx context.Context, zone string, state request.Request, prev
 		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
 		rCNAME, err := r.cname(ctx, zone, stateNew)
 		if err != nil {
+			if err == errKeyNotFound && !IsAnyKey(key) {
+				key = AnyKey(key)
+				goto doSearch
+			}
 			return nil, false, err
 		}
 
@@ -237,6 +269,7 @@ func (r Redis) TXT(ctx context.Context, zone string, state request.Request, prev
 
 func (r Redis) NS(ctx context.Context, zone string, state request.Request, previousRecords []dns.RR) (records []dns.RR, truncated bool, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
+doSearch:
 
 	val, err := r.get(ctx, key, state.Type())
 	switch err {
@@ -255,6 +288,10 @@ func (r Redis) NS(ctx context.Context, zone string, state request.Request, previ
 		rCNAME, err := r.cname(ctx, zone, stateNew)
 
 		if err != nil {
+			if err == errKeyNotFound && !IsAnyKey(key) {
+				key = AnyKey(key)
+				goto doSearch
+			}
 			return nil, false, err
 		}
 
@@ -326,6 +363,7 @@ func (r Redis) PTR(ctx context.Context, zone string, state request.Request) (rec
 
 func (r Redis) MX(ctx context.Context, zone string, state request.Request, previousRecords []dns.RR) (records []dns.RR, truncated bool, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
+doSearch:
 	val, err := r.get(ctx, key, state.Type())
 	switch err {
 	case nil:
@@ -342,6 +380,10 @@ func (r Redis) MX(ctx context.Context, zone string, state request.Request, previ
 		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
 		rCNAME, err := r.cname(ctx, zone, stateNew)
 		if err != nil {
+			if err == errKeyNotFound && !IsAnyKey(key) {
+				key = AnyKey(key)
+				goto doSearch
+			}
 			return nil, false, err
 		}
 
@@ -397,6 +439,7 @@ func (r Redis) MX(ctx context.Context, zone string, state request.Request, previ
 
 func (r Redis) SRV(ctx context.Context, zone string, state request.Request, previousRecords []dns.RR) (records []dns.RR, truncated bool, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
+doSearch:
 	val, err := r.get(ctx, key, state.Type())
 	switch err {
 	case nil:
@@ -413,6 +456,10 @@ func (r Redis) SRV(ctx context.Context, zone string, state request.Request, prev
 		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
 		rCNAME, err := r.cname(ctx, zone, stateNew)
 		if err != nil {
+			if err == errKeyNotFound && !IsAnyKey(key) {
+				key = AnyKey(key)
+				goto doSearch
+			}
 			return nil, false, err
 		}
 
@@ -484,6 +531,7 @@ func (r Redis) CAA(ctx context.Context, zone string, state request.Request) (rec
 
 func (r Redis) SOA(ctx context.Context, zone string, state request.Request) ([]dns.RR, error) {
 	key := Key(state.Name(), r.KeyPrefix)
+
 	val, err := r.get(ctx, key, state.Type())
 
 	switch err {

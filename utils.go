@@ -23,6 +23,10 @@ func AnyKey(key string) string {
 	return strings.Join(parts, ":")
 }
 
+func IsAnyKey(key string) bool {
+	return strings.HasSuffix(key, "*")
+}
+
 // Split255 splits a string into 255 byte chunks.
 func Split255(s string) []string {
 	if len(s) < 255 {

@@ -28,9 +28,9 @@ type Redis struct {
 func (r *Redis) get(ctx context.Context, key, field string) (val string, err error) {
 	val, err = r.Client.HGet(ctx, key, field).Result()
 
-	if err == redisV8.Nil {
-		val, err = r.Client.HGet(ctx, AnyKey(key), field).Result()
-	}
+	// if err == redisV8.Nil {
+	// 	val, err = r.Client.HGet(ctx, AnyKey(key), field).Result()
+	// }
 
 	if err == redisV8.Nil {
 		err = errKeyNotFound
