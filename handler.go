@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/coredns/coredns/plugin"
-	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
 )
@@ -51,8 +50,6 @@ func (redis Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 	}
 
 	if err != nil {
-		clog.Errorf("type: %s, name: %s, error: %s", state.Type(), state.Name(), err)
-
 		if err == errKeyNotFound && redis.Fall.Through(state.Name()) {
 			return plugin.NextOrFailure(redis.Name(), redis.Next, ctx, w, r)
 		}
