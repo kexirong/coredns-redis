@@ -38,9 +38,9 @@ func (r *Redis) get(ctx context.Context, key, field string) (val string, err err
 	return
 }
 
-func (r *Redis) cname(ctx context.Context, zone string, state request.Request) (rCNAME RecordCNANE, err error) {
-	key := Key(state.Name(), r.KeyPrefix)
-	val, err := r.get(ctx, key, state.Type())
+func (r *Redis) cnameGet(ctx context.Context, key string) (rCNAME RecordCNANE, err error) {
+
+	val, err := r.get(ctx, key, dns.Type(dns.TypeCNAME).String())
 	if err != nil {
 		return nil, err
 	}

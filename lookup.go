@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
-	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
 )
@@ -14,8 +13,6 @@ import (
 func (r Redis) A(ctx context.Context, zone string, state request.Request, previousRecords []dns.RR) (records []dns.RR, truncated bool, err error) {
 	key := Key(state.Name(), r.KeyPrefix)
 doSearch:
-	clog.Error(key, " A start: ", time.Now())
-	defer clog.Error(key, " A end: ", time.Now())
 	val, err := r.get(ctx, key, state.Type())
 	switch err {
 	case nil:
@@ -29,8 +26,8 @@ doSearch:
 		}
 
 	case errKeyNotFound:
-		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
-		rCNAME, err := r.cname(ctx, zone, stateNew)
+
+		rCNAME, err := r.cnameGet(ctx, key)
 
 		if err != nil {
 			if err == errKeyNotFound && !IsAnyKey(key) {
@@ -51,7 +48,7 @@ doSearch:
 			}
 
 			if zone == "." || dns.IsSubDomain(zone, dns.Fqdn(item.Host)) {
-				stateNew = state.NewWithQuestion(item.Host, state.QType())
+				stateNew := state.NewWithQuestion(item.Host, state.QType())
 				nextRecords, tc, err := r.A(ctx, zone, stateNew, append(previousRecords, cnameRecode))
 				if tc {
 					truncated = true
@@ -107,8 +104,7 @@ doSearch:
 		}
 
 	case errKeyNotFound:
-		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
-		rCNAME, err := r.cname(ctx, zone, stateNew)
+		rCNAME, err := r.cnameGet(ctx, zone)
 
 		if err != nil {
 			if err == errKeyNotFound && !IsAnyKey(key) {
@@ -128,7 +124,7 @@ doSearch:
 			}
 
 			if zone == "." || dns.IsSubDomain(zone, dns.Fqdn(item.Host)) {
-				stateNew = state.NewWithQuestion(item.Host, state.QType())
+				stateNew := state.NewWithQuestion(item.Host, state.QType())
 				nextRecords, tc, err := r.AAAA(ctx, zone, stateNew, append(previousRecords, cnameRecode))
 				if tc {
 					truncated = true
@@ -207,8 +203,7 @@ doSearch:
 		}
 
 	case errKeyNotFound:
-		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
-		rCNAME, err := r.cname(ctx, zone, stateNew)
+		rCNAME, err := r.cnameGet(ctx, zone)
 		if err != nil {
 			if err == errKeyNotFound && !IsAnyKey(key) {
 				key = AnyKey(key)
@@ -229,7 +224,7 @@ doSearch:
 
 			if zone == "." || dns.IsSubDomain(zone, dns.Fqdn(item.Host)) {
 
-				stateNew = state.NewWithQuestion(item.Host, state.QType())
+				stateNew := state.NewWithQuestion(item.Host, state.QType())
 				nextRecords, tc, err := r.TXT(ctx, zone, stateNew, append(previousRecords, cnameRecode))
 				if tc {
 					truncated = true
@@ -284,8 +279,7 @@ doSearch:
 		}
 
 	case errKeyNotFound:
-		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
-		rCNAME, err := r.cname(ctx, zone, stateNew)
+		rCNAME, err := r.cnameGet(ctx, zone)
 
 		if err != nil {
 			if err == errKeyNotFound && !IsAnyKey(key) {
@@ -305,7 +299,7 @@ doSearch:
 			}
 
 			if zone == "." || dns.IsSubDomain(zone, dns.Fqdn(item.Host)) {
-				stateNew = state.NewWithQuestion(item.Host, state.QType())
+				stateNew := state.NewWithQuestion(item.Host, state.QType())
 				nextRecords, tc, err := r.NS(ctx, zone, stateNew, append(previousRecords, cnameRecode))
 				if tc {
 					truncated = true
@@ -377,8 +371,7 @@ doSearch:
 		}
 
 	case errKeyNotFound:
-		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
-		rCNAME, err := r.cname(ctx, zone, stateNew)
+		rCNAME, err := r.cnameGet(ctx, zone)
 		if err != nil {
 			if err == errKeyNotFound && !IsAnyKey(key) {
 				key = AnyKey(key)
@@ -399,7 +392,7 @@ doSearch:
 
 			if zone == "." || dns.IsSubDomain(zone, dns.Fqdn(item.Host)) {
 
-				stateNew = state.NewWithQuestion(item.Host, state.QType())
+				stateNew := state.NewWithQuestion(item.Host, state.QType())
 				nextRecords, tc, err := r.MX(ctx, zone, stateNew, append(previousRecords, cnameRecode))
 				if tc {
 					truncated = true
@@ -453,8 +446,7 @@ doSearch:
 		}
 
 	case errKeyNotFound:
-		stateNew := state.NewWithQuestion(state.Name(), dns.TypeCNAME)
-		rCNAME, err := r.cname(ctx, zone, stateNew)
+		rCNAME, err := r.cnameGet(ctx, zone)
 		if err != nil {
 			if err == errKeyNotFound && !IsAnyKey(key) {
 				key = AnyKey(key)
@@ -475,7 +467,7 @@ doSearch:
 
 			if zone == "." || dns.IsSubDomain(zone, dns.Fqdn(item.Host)) {
 
-				stateNew = state.NewWithQuestion(item.Host, state.QType())
+				stateNew := state.NewWithQuestion(item.Host, state.QType())
 				nextRecords, tc, err := r.SRV(ctx, zone, stateNew, append(previousRecords, cnameRecode))
 				if tc {
 					truncated = true
